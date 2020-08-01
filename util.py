@@ -96,6 +96,7 @@ def calc_loss(model, input, target_class, img_size, mode):
 
 
 def homo_grid(homo, size):
+    # Ref https://github.com/yangdaxia6/pytorch-Perspective-transformation/blob/master/perpective_transform_pytorch.py
     N, C, H, W = size
 
     base_grid = homo.new(N, H, W, 3)
