@@ -4,9 +4,26 @@ import numbers
 import numpy as np
 from torch.utils.data import Dataset
 from PIL import Image
+from scipy.io import loadmat
 
 
 class EyeGlasses(Dataset):
+    ''' Loading EyeGlasses
+    Test code:
+        from torchvision import transforms
+        from torch.utils.data import Dataset, DataLoader
+
+        trans = transforms.Compose([
+            Crop(25, 53, 176, 64),
+            transforms.ToTensor()
+        ])
+
+        dataset = EyeGlasses('../../data/eyeglasses', trans)
+        loader = DataLoader(dataset, batch_size=2, shuffle=True)
+        for batch in loader:
+            print(batch.shape)
+            exit(0)
+    '''
 
     def __init__(self, root_dir, trans=None):
         super(EyeGlasses, self).__init__()
@@ -67,18 +84,71 @@ class Crop(object):
         return self.__class__.__name__ + '(size={0})'.format(self.size)
 
 
-if __name__ == "__main__":
+class PhysicalDataset(Dataset):
+    ''' The dataset is used to attack physically, including eyeglasses and attacker's images
+    '''
+    def __init__(self, dataset_dirs, trans=[None, None]):
+        '''
+        Args:
+            dataset_dirs: eyeglasses, and attacker's images
+            trans: eyeglasses transformations and attacker's images transformations
+        Test Code:
+            from torchvision import transforms
+            from torch.utils.data import Dataset, DataLoader
 
-    from torchvision import transforms
-    from torch.utils.data import Dataset, DataLoader
+            eyeglasses_trans = transforms.Compose([
+                Image.open,
+                Crop(25, 53, 176, 64),
+                transforms.ToTensor()
+            ])
+            attacker_trans = transforms.Compose([
+                Image.open,
+                transforms.ToTensor()
+            ])
 
-    trans = transforms.Compose([
-        Crop(25, 53, 176, 64),
-        transforms.ToTensor()
-    ])
+            dataset = PhysicalDataset(['../../data/eyeglasses', '../../data/physical'], [eyeglasses_trans, attacker_trans])
+            loader = DataLoader(dataset, batch_size=2, shuffle=True)
+            for batch in loader:
+                print(batch[0].shape, batch[1].shape, batch[2].shape)
+                exit(0)
+        '''
+        assert len(dataset_dirs) == 2 and len(trans) == 2
 
-    dataset = EyeGlasses('../../data/eyeglasses', trans)
-    loader = DataLoader(dataset, batch_size=2, shuffle=True)
-    for batch in loader:
-        print(batch.shape)
-        exit(0)
+        super(PhysicalDataset, self).__init__()
+        eyeglasses_imgs, attacker_imgs = None, None
+        dirs = []
+        for dirname in dataset_dirs:
+            dirs += [os.listdir(dirname)]
+        eyeglasses_imgs, attacker_imgs = dirs
+
+        # dataset
+        self.eyeglasses_imgs = [os.path.join(dataset_dirs[0], img) for img in eyeglasses_imgs]
+        self.attacker_imgs = [os.path.join(dataset_dirs[1], img) for img in attacker_imgs if img.endswith('.jpg') or img.endswith('.png')]
+
+        # transform
+        self.eyeglasses_trans = trans[0]
+        self.attacker_trans = trans[1]
+
+    def __getitem__(self, index):
+        short_len = len(self.attacker_imgs)
+        eyeglasses, attacker = None, None
+        idx = index % short_len
+
+        # Eyeglasses Images
+        eyeglasses = self.eyeglasses_imgs[index]
+        if self.eyeglasses_trans:
+            eyeglasses = self.eyeglasses_trans(eyeglasses)
+
+        # Attackers' Images
+        attacker = self.attacker_imgs[idx]
+        attacker_path = attacker
+        if self.attacker_trans:
+            attacker = self.attacker_trans(attacker)
+
+        # Transformer Parameters
+        attacker_param_path = attacker_path.replace('.jpg', '.mat').replace('.png', '.mat')
+        attacker_param = loadmat(attacker_param_path)['matrix'].astype(np.float32)
+        return eyeglasses, attacker, attacker_param
+
+    def __len__(self):
+        return len(self.eyeglasses_imgs)

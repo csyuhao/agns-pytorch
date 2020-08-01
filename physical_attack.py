@@ -1,18 +1,19 @@
 '''
-    Digital attack by using accessarios
+    Physical attack by using accessarios
 '''
 import sys
 import torch
 import argparse
+from PIL import Image
 from module.discriminator import Discriminator
 from module.generator import Generator
-from module.utils.dataset import EyeGlasses, Crop
+from module.utils.dataset import PhysicalDataset, Crop
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from torch import optim
 import torch.autograd as autograd
 from torchvision.utils import save_image
-from util import load_img, wear_eyeglasses, calc_loss
+from util import load_img, wear_eyeglasses_physical, calc_loss
 from module.target import FaceNet, ArcFace, CosFace
 
 
@@ -50,13 +51,20 @@ def main(args):
     # ===========================
     # loading eyeglasses dataset
     eyeglasses = args.eyeglasses
-    trans = transforms.Compose([
+    eyeglasses_trans = transforms.Compose([
+        Image.open,
         Crop(25, 53, 176, 64),
         transforms.ToTensor(),
         transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
     ])
-    # loading attacker's images and eyeglasses mask
-    attacker_img = load_img(args.attacker, 224).to(device)
+    # loading attacker's images dataset
+    attacker = args.attacker
+    attacker_trans = transforms.Compose([
+        Image.open,
+        transforms.ToTensor(),
+        transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+    ])
+    # loading eyeglasses mask
     mask_img = load_img(args.mask, 224).to(device)
 
     # ===========================
@@ -91,14 +99,14 @@ def main(args):
     # Loss function
     adversarial_loss = torch.nn.BCELoss()
 
-    dataset = EyeGlasses(eyeglasses, trans)
+    dataset = PhysicalDataset([eyeglasses, attacker], [eyeglasses_trans, attacker_trans])
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     for epoch in range(epochs):
 
         for idx, batch in enumerate(loader):
-            batch_size = batch.shape[0]
-            batch = batch.to(device)
+            eyeglasses_img, attacker_img, matrix = batch[0].to(device), batch[1].to(device), batch[2].to(device)
+            batch_size = eyeglasses_img.shape[0]
 
             # adversarial ground truths
             valid = torch.ones((batch_size, 1), dtype=torch.float32).to(device)
@@ -118,7 +126,7 @@ def main(args):
             fake_images = gen(z)
             g_loss = adversarial_loss(disc(fake_images), valid)
             # attack loss
-            worn_imgs = wear_eyeglasses(fake_images, attacker_img, mask_img)
+            worn_imgs = wear_eyeglasses_physical(fake_images, attacker_img, mask_img, matrix)
             c_loss, prob = calc_loss(
                 target_model, worn_imgs, target, img_size, mode)
             loss = kappa * g_loss - (1.0 - kappa) * c_loss
@@ -133,7 +141,7 @@ def main(args):
             optimizer_d.zero_grad()
             fake_images = autograd.Variable(
                 fake_images.data, requires_grad=True)
-            real_loss = adversarial_loss(disc(batch), valid)
+            real_loss = adversarial_loss(disc(eyeglasses_img), valid)
             fake_loss = adversarial_loss(disc(fake_images), fake)
             d_loss = (fake_loss + real_loss) / 2.0
             d_loss.backward()
@@ -176,7 +184,7 @@ def parse(argv):
     parser.add_argument(
         '--mask', type=str, default=r'data\eyeglasses_mask_6percent.png', help='path of eyeglasses mask')
     parser.add_argument('--attacker', type=str,
-                        default=r'data\digital\19.jpg', help='the picture of attacker')
+                        default=r'data\physical', help='the picture of attacker')
 
     # params seeting
     parser.add_argument('--kappa', type=float, default=0.75,
@@ -185,8 +193,7 @@ def parse(argv):
     # pretrained model
     parser.add_argument('--pretrained_epochs', type=int,
                         default=30, help='number of epochs of trained model')
-    parser.add_argument('--save_path', type=str,
-                        default='save', help='path to save trained model')
+    parser.add_argument('--save_path', type=str, default='save', help='path to save trained model')
 
     return parser.parse_args(argv)
 
