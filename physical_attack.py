@@ -40,10 +40,10 @@ def main(args):
     # Summary Informations #
     # ======================
     print('# ===========================')
-    print('Summary Informations')
-    print('The attacked model [{}]'.format(args.target_model))
-    print('The target class [{}]'.format(args.target))
-    print('The attack mode [{}]'.format(args.mode))
+    print('# Summary Informations')
+    print('# The attacked model [{}]'.format(args.target_model))
+    print('# The target class [{}]'.format(args.target))
+    print('# The attack mode [{}]'.format(args.mode))
     print('# ===========================')
 
     # ===========================
@@ -125,12 +125,21 @@ def main(args):
             # discriminative loss
             fake_images = gen(z)
             g_loss = adversarial_loss(disc(fake_images), valid)
+            grads_disc_loss = autograd.grad(g_loss, gen.parameters(), retain_graph=True)
             # attack loss
             worn_imgs = wear_eyeglasses_physical(fake_images, attacker_img, mask_img, matrix)
-            c_loss, prob = calc_loss(
+            clf_loss, prob = calc_loss(
                 target_model, worn_imgs, target, img_size, mode)
-            loss = kappa * g_loss - (1.0 - kappa) * c_loss
-            loss.backward()
+            grads_clf_loss = autograd.grad(-1.0 * clf_loss, gen.parameters(), retain_graph=False)
+            # update generator parameters gradients
+            for i, p in enumerate(gen.parameters()):
+                grad_1 = grads_disc_loss[i]
+                grad_2 = grads_clf_loss[i]
+                if torch.norm(grad_1, p=2) > torch.norm(grad_2, p=2):
+                    grad_1 = grad_1 * torch.norm(grad_2, p=2) / torch.norm(grad_1, p=2)
+                else:
+                    grad_2 = grad_2 * torch.norm(grad_1, p=2) / torch.norm(grad_2, p=2)
+                p.grad = (kappa * grad_1 + kappa * grad_2).clone()
             optimizer_g.step()
 
             # ==========================
@@ -147,8 +156,8 @@ def main(args):
             d_loss.backward()
             optimizer_d.step()
             if idx % 50 == 0:
-                print("[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f] [Prob: %f] [Disc: %f]"
-                      % (epoch, epochs, idx, len(loader), d_loss.item(), loss.item(), prob.item(), g_loss.item()))
+                print("[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [Prob: %f] [Disc: %f]"
+                      % (epoch, epochs, idx, len(loader), d_loss.item(), prob.item(), g_loss.item()))
 
             batches_done = epoch * len(loader) + idx
             if batches_done % sample_interval == 0:
