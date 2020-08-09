@@ -154,7 +154,7 @@ def main(args):
             batches_done = epoch * len(loader) + idx
             if batches_done % sample_interval == 0:
                 save_image(worn_imgs.data[:25], "logs/%d.png" %
-                           batches_done, nrow=5, normalize=True)
+                           batches_done, nrow=5, normalize=False)
 
     torch.save(gen.state_dict(), r'{}\gen_{}.pt'.format(save_path, epochs))
     torch.save(disc.state_dict(), r'{}\disc_{}.pt'.format(save_path, epochs))

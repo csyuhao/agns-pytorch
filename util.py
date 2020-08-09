@@ -72,7 +72,7 @@ def wear_eyeglasses(eyeglasses, attacker_img, mask):
     grid = F.affine_grid(theta, size=normal_attacker_img.size(), align_corners=True)
     normal_eyeglasses = F.grid_sample(padded_eyeglasses, grid, mode='bilinear', align_corners=True)
 
-    worn_img = normal_attacker_img.masked_fill(normal_mask != 0, 0.0) + normal_eyeglasses
+    worn_img = normal_attacker_img.masked_fill(normal_mask != 0, 0.0) + normal_eyeglasses.masked_fill(normal_mask == 0, 0.0)
 
     return worn_img
 
@@ -177,6 +177,6 @@ def wear_eyeglasses_physical(eyeglasses, attacker_img, mask, matrix):
     normal_eyeglasses = F.grid_sample(template_eyeglasses, grid, mode='bilinear', align_corners=True)
     normal_mask = F.grid_sample(repeat_mask, grid, mode='bilinear', align_corners=True)
 
-    worn_img = normal_attacker_img.masked_fill(normal_mask != 0, 0.0) + normal_eyeglasses
+    worn_img = normal_attacker_img.masked_fill(normal_mask != 0, 0.0) + normal_eyeglasses.masked_fill(normal_mask == 0, 0.0)
 
     return worn_img
