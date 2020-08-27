@@ -109,7 +109,7 @@ def main(args):
             batch_size = eyeglasses_img.shape[0]
 
             # adversarial ground truths
-            valid = torch.ones((batch_size, 1), dtype=torch.float32).to(device)
+            valid = torch.ones((batch_size, 1), dtype=torch.float32).to(device) * 0.9
             fake = torch.zeros((batch_size, 1), dtype=torch.float32).to(device)
 
             # ==========================
@@ -201,7 +201,7 @@ def parse(argv):
 
     # pretrained model
     parser.add_argument('--pretrained_epochs', type=int,
-                        default=30, help='number of epochs of trained model')
+                        default=500, help='number of epochs of trained model')
     parser.add_argument('--save_path', type=str, default='save', help='path to save trained model')
 
     return parser.parse_args(argv)
