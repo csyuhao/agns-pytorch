@@ -86,13 +86,8 @@ class CosFace(nn.Module):
     def __init__(self, classnum=28, pretrained=None, type=20, is_gray=False):
         super(CosFace, self).__init__()
         self.backbone = sphere(type=type, is_gray=is_gray)
-        self.backbone.eval()
         if pretrained:
             self.backbone.load_state_dict(torch.load(pretrained))
-
-        for p in self.backbone.parameters():
-            p.requires_grad = False
-
         self.logits = nn.Linear(512, classnum)
 
     def forward(self, input):

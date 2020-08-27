@@ -166,8 +166,8 @@ def parse(argv):
                         help='input batch size for training (default: 32)')
     parser.add_argument('--epochs', type=int, default=1,
                         help='number of epochs to train (default: 1)')
-    parser.add_argument('--lr', type=float, default=2e-5,
-                        help='learning rate (default: 2e-5)')
+    parser.add_argument('--lr', type=float, default=5e-5,
+                        help='learning rate (default: 5e-5)')
     parser.add_argument('--no_cuda', action='store_true',
                         default=False, help='disables CUDA training')
     parser.add_argument('--interval', type=int, default=50,

@@ -6,6 +6,13 @@ from torch import nn
 from torchvision.models.utils import load_state_dict_from_url
 
 
+model_urls = {
+    'iresnet34': 'https://sota.nizhib.ai/insightface/iresnet34-5b0d0e90.pth',
+    'iresnet50': 'https://sota.nizhib.ai/insightface/iresnet50-7f187506.pth',
+    'iresnet100': 'https://sota.nizhib.ai/insightface/iresnet100-73e07ba7.pth'
+}
+
+
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
     """3x3 convolution with padding"""
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
@@ -153,8 +160,8 @@ def _iresnet(arch, block, layers, pretrained, progress, **kwargs):
     return model
 
 
-def iresnet30(pretrained=False, progress=True, **kwargs):
-    return _iresnet('iresnet30', IBasicBlock, [3, 4, 6, 3], pretrained, progress,
+def iresnet34(pretrained=False, progress=True, **kwargs):
+    return _iresnet('iresnet34', IBasicBlock, [3, 4, 6, 3], pretrained, progress,
                     **kwargs)
 
 
@@ -162,14 +169,9 @@ class ArcFace(nn.Module):
 
     def __init__(self, embedding_size=512, classnum=None, pretrained_backbone=None):
         super(ArcFace, self).__init__()
-        self.backbone = iresnet30(pretrained=False)
-        self.backbone.eval()
+        self.backbone = iresnet34(pretrained=False)
         if pretrained_backbone:
             self.backbone.load_state_dict(torch.load(pretrained_backbone))
-
-        for p in self.backbone.parameters():
-            p.requires_grad = False
-
         self.logits = nn.Linear(embedding_size, classnum)
 
     def forward(self, input):

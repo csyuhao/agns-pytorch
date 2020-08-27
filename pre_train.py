@@ -22,16 +22,16 @@ if __name__ == '__main__':
         transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
     ])
     batch_size = 32
-    epochs = 30
+    epochs = 200
     sample_interval = 50
 
     # generator
     gen = Generator().cuda()
-    optimizer_g = optim.Adam(gen.parameters(), lr=2e-4, betas=(0.5, 0.999))
+    optimizer_g = optim.Adam(gen.parameters(), lr=2e-5, betas=(0.5, 0.999))
 
     # discriminator
     disc = Discriminator().cuda()
-    optimizer_d = optim.Adam(disc.parameters(), lr=2e-4, betas=(0.5, 0.999))
+    optimizer_d = optim.Adam(disc.parameters(), lr=2e-5, betas=(0.5, 0.999))
 
     # Loss function
     adversarial_loss = torch.nn.BCELoss()
@@ -46,7 +46,7 @@ if __name__ == '__main__':
             batch = batch.cuda()
 
             # adversarial ground truths
-            valid = torch.ones((batch_size, 1), dtype=torch.float32).cuda()
+            valid = torch.ones((batch_size, 1), dtype=torch.float32).cuda() * 0.9
             valid_label = autograd.Variable(valid.data, requires_grad=False)
             fake = torch.zeros((batch_size, 1), dtype=torch.float32).cuda()
             fake_label = autograd.Variable(fake.data, requires_grad=False)
