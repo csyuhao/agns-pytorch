@@ -78,7 +78,7 @@ if __name__ == '__main__':
             d_loss.backward()
             optimizer_d.step()
             if idx % 50 == 0:
-                print("[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]" % (epoch, 30, idx, len(loader), d_loss.item(), g_loss.item()))
+                print("[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]" % (epoch, epochs, idx, len(loader), d_loss.item(), g_loss.item()))
 
             batches_done = epoch * len(loader) + idx
             if batches_done % sample_interval == 0:
