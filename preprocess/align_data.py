@@ -2,9 +2,11 @@ import os
 import sys
 import torch
 import argparse
-from module.mtcnn.mtcnn import MTCNN
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
+
+sys.path.append('..')
+from module.mtcnn.mtcnn import MTCNN
 
 
 def collate_pil(x):
@@ -51,7 +53,7 @@ def parse(argv):
     parser.add_argument('--input', type=str, required=True, help='file path of facebank')
     parser.add_argument('--output', type=str, required=True, help='file path of cropped dataset')
     parser.add_argument('--output_size', type=int, default=300, help='size of cropped images')
-    parser.add_argument('--marigin', type=int, default=0, help='marigin of cropped images')
+    parser.add_argument('--margin', type=int, default=0, help='marigin of cropped images')
     return parser.parse_args(argv)
 
 

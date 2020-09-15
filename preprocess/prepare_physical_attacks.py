@@ -35,6 +35,9 @@ def main(args):
             img = (img & binary_img) if img is not None else binary_img
         img = (255.0 * img).astype(np.uint8)
 
+        cv2.imshow('demo', img)
+        cv2.waitKey(0)
+
         # calculating minimal rectangles
         def calculate_area(contour):
             area = cv2.contourArea(contour)
@@ -64,6 +67,7 @@ def main(args):
 
         # transform parameters
         center_locs = np.array(locs, dtype=np.float32)
+        print(center_locs)
         center_locs = np.array([[-1 + 2 * x / (output_size - 1.0), -1 + 2 * y / (
             output_size - 1.0)] for (x, y) in center_locs], dtype=np.float32)
         matrix, _ = cv2.findHomography(center_locs, centers, method=cv2.RANSAC)

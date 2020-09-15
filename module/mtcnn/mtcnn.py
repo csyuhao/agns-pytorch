@@ -279,15 +279,16 @@ class MTCNN(nn.Module):
             if not self.keep_all:
                 box_im = box_im[[0]]
 
-            land_im = batch_landmarks[idx]
+            if save_landmarks:
+                land_im = batch_landmarks[idx]
 
             faces_im = []
             for i, box in enumerate(box_im):
                 face_path = path_im
                 save_name, ext = os.path.splitext(path_im)
                 landmark_path = save_name + '.txt'
-
-                land = land_im[i]
+                if save_landmarks:
+                    land = land_im[i]
 
                 if path_im is not None and i > 0:
                     save_name, ext = os.path.splitext(path_im)
