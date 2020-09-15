@@ -11,7 +11,7 @@ def main(args):
     cropped_info = args.output
     eyeglasses_centers = args.eyeglass_centers
     output_size = args.output_size
-    threshold_rgb = (155, 155, 155)
+    threshold_rgb = (70, 70, 70)
 
     centers = loadmat(eyeglasses_centers)[
         'eyeglass_marks_centers'].astype(np.float32)
@@ -34,9 +34,6 @@ def main(args):
                 binary_img = aligned_img[:, :, idx] > threshold_rgb[idx]
             img = (img & binary_img) if img is not None else binary_img
         img = (255.0 * img).astype(np.uint8)
-
-        cv2.imshow('demo', img)
-        cv2.waitKey(0)
 
         # calculating minimal rectangles
         def calculate_area(contour):
@@ -67,7 +64,6 @@ def main(args):
 
         # transform parameters
         center_locs = np.array(locs, dtype=np.float32)
-        print(center_locs)
         center_locs = np.array([[-1 + 2 * x / (output_size - 1.0), -1 + 2 * y / (
             output_size - 1.0)] for (x, y) in center_locs], dtype=np.float32)
         matrix, _ = cv2.findHomography(center_locs, centers, method=cv2.RANSAC)

@@ -139,7 +139,7 @@ def main(args):
                     grad_1 = grad_1 * torch.norm(grad_2, p=2) / torch.norm(grad_1, p=2)
                 else:
                     grad_2 = grad_2 * torch.norm(grad_1, p=2) / torch.norm(grad_2, p=2)
-                p.grad = (kappa * grad_1 + kappa * grad_2).clone()
+                p.grad = (kappa * grad_1 + (1.0 - kappa) * grad_2).clone()
             optimizer_g.step()
 
             # ==========================

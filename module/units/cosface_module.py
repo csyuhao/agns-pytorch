@@ -88,7 +88,11 @@ class CosFace(nn.Module):
         self.backbone = sphere(type=type, is_gray=is_gray)
         if pretrained:
             self.backbone.load_state_dict(torch.load(pretrained))
-        self.logits = nn.Linear(512, classnum)
+        self.logits = nn.Sequential(*[
+            nn.Linear(512, 256),
+            nn.Tanh(),
+            nn.Linear(256, classnum)
+        ])
 
     def forward(self, input):
         embedding = self.backbone(input)

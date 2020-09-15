@@ -1,7 +1,7 @@
 import torch
 import module.units.arcface_module as arcface_module
 import module.units.cosface_module as cosface_module
-from facenet_pytorch import InceptionResnetV1, fixed_image_standardization
+from module.units.facenet_module import InceptionResnetV1, fixed_image_standardization
 
 
 class ArcFace(object):

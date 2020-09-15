@@ -172,7 +172,11 @@ class ArcFace(nn.Module):
         self.backbone = iresnet34(pretrained=False)
         if pretrained_backbone:
             self.backbone.load_state_dict(torch.load(pretrained_backbone))
-        self.logits = nn.Linear(embedding_size, classnum)
+        self.logits = nn.Sequential(*[
+            nn.Linear(embedding_size, 256),
+            nn.Tanh(),
+            nn.Linear(256, classnum)
+        ])
 
     def forward(self, input):
         embeddings = self.backbone(input)
