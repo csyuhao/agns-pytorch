@@ -217,7 +217,7 @@ def main(args):
         transforms.ToPILImage()
     ])
     fake_images = gen(save_noise)
-    fake_image = trans(fake_images[0].cpu())
+    fake_image = trans(fake_images[0].cpu()).resize((491, 179), resample=0)
     fake_image.save(os.path.join(save_dir, 'fake_image.png'), 'PNG')
     return loss, prob, success_rate
 

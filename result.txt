@@ -1,3 +1,9 @@
 Attacker: Yu_Hao, Target: 34, Attacked Model: ArcFace, Attack Mode: dodge, Prob: 0.38844653964042664, Loss: 0.22310692071914673, Success Rate: 0.5499999523162842
 Attacker: Yu_Hao, Target: 34, Attacked Model: CosFace, Attack Mode: dodge, Prob: 0.0285691749304533, Loss: 0.9428616762161255, Success Rate: 1.0
 Attacker: Yu_Hao, Target: 34, Attacked Model: FaceNet, Attack Mode: dodge, Prob: 0.42160698771476746, Loss: 0.1567860245704651, Success Rate: 0.25
+Attacker: Yu_Hao, Target: 34, Attacked Model: ArcFace, Attack Mode: dodge, Prob: 0.3632924556732178, Loss: 0.27341508865356445, Success Rate: 0.6499999761581421
+Attacker: Yu_Hao, Target: 34, Attacked Model: CosFace, Attack Mode: dodge, Prob: 0.03597444295883179, Loss: 0.9280511140823364, Success Rate: 1.0
+Attacker: Yu_Hao, Target: 34, Attacked Model: FaceNet, Attack Mode: dodge, Prob: 0.28166648745536804, Loss: 0.4366670250892639, Success Rate: 0.800000011920929
+Attacker: Yu_Hao, Target: 34, Attacked Model: ArcFace, Attack Mode: dodge, Prob: 0.3205873370170593, Loss: 0.35882532596588135, Success Rate: 0.699999988079071
+Attacker: Yu_Hao, Target: 34, Attacked Model: CosFace, Attack Mode: dodge, Prob: 0.06015259027481079, Loss: 0.8796948194503784, Success Rate: 1.0
+Attacker: Yu_Hao, Target: 34, Attacked Model: FaceNet, Attack Mode: dodge, Prob: 0.3037593364715576, Loss: 0.39248132705688477, Success Rate: 0.800000011920929

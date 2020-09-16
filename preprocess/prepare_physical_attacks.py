@@ -18,10 +18,15 @@ def main(args):
     centers = np.array([[-1 + 2 * x / (output_size - 1.0), -1 + 2 *
                          y / (output_size - 1.0)] for (x, y) in centers], dtype=np.float32)
 
-    for filename in os.listdir(dataset_dir):
-        if filename.endswith('.jpg') is False and filename.endswith('.png') is False:
+    filepaths = []
+    for home, dirname, filenames in os.walk(dataset_dir):
+        for filename in filenames:
+            filepath = os.path.join(home, filename)
+            filepaths.append(filepath)
+
+    for filepath in filepaths:
+        if filepath.endswith('.jpg') is False and filepath.endswith('.png') is False:
             continue
-        filepath = os.path.join(dataset_dir, filename)
         aligned_img = cv2.imread(filepath)
 
         # threshold images
@@ -68,6 +73,9 @@ def main(args):
             output_size - 1.0)] for (x, y) in center_locs], dtype=np.float32)
         matrix, _ = cv2.findHomography(center_locs, centers, method=cv2.RANSAC)
         filepath = filepath.replace(dataset_dir, cropped_info)
+        sub_dirs, _ = os.path.split(filepath)
+        if os.path.exists(sub_dirs) is False:
+            os.makedirs(sub_dirs)
         savemat(filepath.replace('.jpg', '.mat').replace('.png', '.mat'), {
             'matrix': matrix
         })
