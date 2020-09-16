@@ -1,16 +1,17 @@
 '''
     Physical attack by using accessarios
 '''
+import os
 import sys
 import torch
 import argparse
 from PIL import Image
 from module.discriminator import Discriminator
 from module.generator import Generator
-from module.utils.dataset import PhysicalDataset, Crop
+from module.utils.dataset import PhysicalDataset, PhysicalTestDataset, Crop
 from torchvision import transforms
 from torch.utils.data import DataLoader
-from torch import optim
+from torch import mean, optim
 import torch.autograd as autograd
 from torchvision.utils import save_image
 from util import load_img, wear_eyeglasses_physical, calc_loss
@@ -35,6 +36,13 @@ def main(args):
     target = args.target
     kappa = args.kappa
     save_path = args.save_path
+    dirname = '{}-{}-{}-{}'.format(args.attacker, args.target, args.target_model, args.mode)
+    log_dir = os.path.join(r'logs', dirname)
+    save_dir = os.path.join(save_path, dirname)
+    if os.path.exists(log_dir) is False:
+        os.makedirs(log_dir)
+    if os.path.exists(save_dir) is False:
+        os.makedirs(save_dir)
 
     # ======================
     # Summary Informations #
@@ -58,7 +66,7 @@ def main(args):
         transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
     ])
     # loading attacker's images dataset
-    attacker = args.attacker
+    attacker = os.path.join(r'data\physical', args.attacker)
     attacker_trans = transforms.Compose([
         Image.open,
         transforms.ToTensor(),
@@ -128,7 +136,7 @@ def main(args):
             grads_disc_loss = autograd.grad(g_loss, gen.parameters(), retain_graph=True)
             # attack loss
             worn_imgs = wear_eyeglasses_physical(fake_images, attacker_img, mask_img, matrix)
-            clf_loss, prob = calc_loss(
+            clf_loss, prob, _ = calc_loss(
                 target_model, worn_imgs, target, img_size, mode)
             grads_clf_loss = autograd.grad(-1.0 * clf_loss, gen.parameters(), retain_graph=False)
             # update generator parameters gradients
@@ -161,11 +169,57 @@ def main(args):
 
             batches_done = epoch * len(loader) + idx
             if batches_done % sample_interval == 0:
-                save_image(worn_imgs.data[:25], "logs/%d.png" %
-                           batches_done, nrow=5, normalize=False)
+                save_image(worn_imgs.data[:25], "%s/%d.png" %
+                           (log_dir, batches_done), nrow=5, normalize=False)
 
-    torch.save(gen.state_dict(), r'{}\gen_{}.pt'.format(save_path, epochs))
-    torch.save(disc.state_dict(), r'{}\disc_{}.pt'.format(save_path, epochs))
+    torch.save(gen.state_dict(), r'{}\gen_{}.pt'.format(save_dir, epochs))
+    torch.save(disc.state_dict(), r'{}\disc_{}.pt'.format(save_dir, epochs))
+
+    dataset = PhysicalTestDataset(attacker, attacker_trans)
+    loader = DataLoader(dataset, batch_size=len(dataset), shuffle=False)
+    loss, prob, success_rate = 0.0, 0.0, 0.0
+    if args.mode == 'dodge':
+        prob = 1.0
+    else:
+        prob = 0.0
+    save_noise = None
+    with torch.no_grad():
+        for idx in range(32):
+            for batch in loader:
+                attacker_img, matrix = batch[0].to(device), batch[1].to(device)
+                noise = torch.FloatTensor(1, 25).uniform_(-1.0, 1.0).to(device)
+                noise = noise.repeat(matrix.shape[0], 1)
+                z = autograd.Variable(noise.data, requires_grad=True)
+
+                # discriminative loss
+                fake_images = gen(z)
+                # attack loss
+                worn_imgs = wear_eyeglasses_physical(fake_images, attacker_img, mask_img, matrix)
+                clf_loss, p, rate = calc_loss(
+                    target_model, worn_imgs, target, img_size, mode)
+
+                mean_loss = clf_loss.detach().cpu().mean()
+                mean_prob = p.detach().cpu().mean()
+                if args.mode == 'dodge':
+                    success_rate = 1 - rate
+                    if mean_prob < prob:
+                        prob = mean_prob
+                        loss = mean_loss
+                        save_noise = noise
+                else:
+                    success_rate = rate
+                    if mean_prob > prob:
+                        prob = mean_prob
+                        loss = mean_loss
+                        save_noise = noise
+
+    trans = transforms.Compose([
+        transforms.ToPILImage()
+    ])
+    fake_images = gen(save_noise)
+    fake_image = trans(fake_images[0].cpu())
+    fake_image.save(os.path.join(save_dir, 'fake_image.png'), 'PNG')
+    return loss, prob, success_rate
 
 
 def parse(argv):
@@ -195,7 +249,7 @@ def parse(argv):
     parser.add_argument('--attacker', type=str,
                         default=r'data\physical', help='the picture of attacker')
 
-    # params seeting
+    # params setting
     parser.add_argument('--kappa', type=float, default=0.25,
                         help='weight of generator\'s loss function')
 
@@ -209,4 +263,40 @@ def parse(argv):
 
 if __name__ == "__main__":
     args = parse(sys.argv[1:])
-    main(args)
+
+    '''
+    Attacker Victim1 Victim2 # imperosonating
+    Attacker # dodging
+    '''
+    attacker_info = {}
+    with open('pair.txt', 'r') as f:
+        for line in f.readlines():
+            line = line.strip()
+            names = line.split(' ')
+
+            # storing attackers' information
+            attacker = names[0]
+            if attacker in attacker_info:
+                raise Exception('The attacker is repetitive.')
+            attacker_info[attacker] = []
+
+            # storing victims' information
+            for name in names[1:]:
+                attacker_info[attacker].append(int(name))
+
+    for attacker in attacker_info:
+        args.attacker = attacker
+        for victim_id in attacker_info[attacker]:
+            args.target = victim_id
+            if len(attacker_info[attacker]) == 1:
+                args.mode = 'dodge'
+            else:
+                args.mode = 'impersonate'
+            for target_model in ['ArcFace', 'CosFace', 'FaceNet']:
+                args.target_model = target_model
+                args.batch_size = 32
+
+                loss, prob, success_rate = main(args)
+
+                with open('result.txt', 'a+') as f:
+                    f.write('Attacker: {}, Target: {}, Attacked Model: {}, Attack Mode: {}, Prob: {}, Loss: {}, Success Rate: {}\n'.format(args.attacker, args.target, args.target_model, args.mode, prob, loss, success_rate))

@@ -120,7 +120,7 @@ def main(args):
             grads_disc_loss = autograd.grad(g_loss, gen.parameters(), retain_graph=True)
             # attack loss
             worn_imgs = wear_eyeglasses(fake_images, attacker_img, mask_img)
-            clf_loss, prob = calc_loss(
+            clf_loss, prob, _ = calc_loss(
                 target_model, worn_imgs, target, img_size, mode)
             grads_clf_loss = autograd.grad(-1.0 * clf_loss, gen.parameters(), retain_graph=False)
             # update generator parameters gradients

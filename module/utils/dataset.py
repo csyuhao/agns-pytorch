@@ -152,3 +152,40 @@ class PhysicalDataset(Dataset):
 
     def __len__(self):
         return len(self.eyeglasses_imgs)
+
+
+class PhysicalTestDataset(Dataset):
+    ''' The dataset is used to attack physically, only including attacker's images
+    '''
+    def __init__(self, dataset_dir, trans=None):
+        '''
+        Args:
+            dataset_dirs: eyeglasses, and attacker's images
+            trans: eyeglasses transformations and attacker's images transformations
+        Test Code:
+        '''
+
+        super(PhysicalTestDataset, self).__init__()
+        attacker_imgs = os.listdir(dataset_dir)
+
+        # dataset
+        self.attacker_imgs = [os.path.join(dataset_dir, img) for img in attacker_imgs if img.endswith('.jpg') or img.endswith('.png')]
+
+        # transform
+        self.attacker_trans = trans
+
+    def __getitem__(self, index):
+        attacker = None
+        # Attackers' Images
+        attacker = self.attacker_imgs[index]
+        attacker_path = attacker
+        if self.attacker_trans:
+            attacker = self.attacker_trans(attacker)
+
+        # Transformer Parameters
+        attacker_param_path = attacker_path.replace('.jpg', '.mat').replace('.png', '.mat')
+        attacker_param = loadmat(attacker_param_path)['matrix'].astype(np.float32)
+        return attacker, attacker_param
+
+    def __len__(self):
+        return len(self.attacker_imgs)

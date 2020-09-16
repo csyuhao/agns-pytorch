@@ -88,11 +88,12 @@ def calc_loss(model, input, target_class, img_size, mode):
     # forward
     logits = model.forward(resized_img)
     prob = F.softmax(logits, dim=1)
+    rate = (torch.max(logits, dim=1)[1] == labels).float().mean()
     if mode == 'dodge':
         c_loss = 1.0 - 2.0 * prob.gather(1, labels.view(batch_size, -1)).mean(0)
     elif mode == 'impersonate':
         c_loss = 2.0 * prob.gather(1, labels.view(batch_size, -1)).mean(0) - 1.0
-    return c_loss, prob.gather(1, labels.view(batch_size, -1)).mean(0)
+    return c_loss, prob.gather(1, labels.view(batch_size, -1)).mean(0), rate
 
 
 def homo_grid(homo, size):
