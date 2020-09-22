@@ -3,6 +3,7 @@ Auxillary functions
 '''
 import torch
 from PIL import Image
+from torch import eye
 import torch.nn.functional as F
 from torchvision import transforms
 
@@ -181,3 +182,14 @@ def wear_eyeglasses_physical(eyeglasses, attacker_img, mask, matrix):
     worn_img = normal_attacker_img.masked_fill(normal_mask != 0, 0.0) + normal_eyeglasses.masked_fill(normal_mask == 0, 0.0)
 
     return worn_img
+
+
+if __name__ == '__main__':
+    from module.utils.dataset import Crop
+    eyeglasses_path = r'data/eyeglasses_mask_6percent.png'
+    eyeglasses = Image.open(eyeglasses_path)
+    trans = transforms.Compose([
+        Crop(25, 53, 176, 64),
+    ])
+    eyeglasses = trans(eyeglasses)
+    eyeglasses.save(r'data/cropped_eyeglasses_mask.png')
