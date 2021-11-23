@@ -5,3 +5,5 @@ __pycache__
 *.pt
 *.mat
 *.zip
+result.txt
+pair.txt

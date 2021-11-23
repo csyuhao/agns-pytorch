@@ -15,7 +15,7 @@ from torch import mean, optim
 import torch.autograd as autograd
 from torchvision.utils import save_image
 from util import load_img, wear_eyeglasses_physical, calc_loss
-from module.target import FaceNet, ArcFace, CosFace
+from module.target import FaceNet, ArcFace, CosFace, VggFace
 
 
 def main(args):
@@ -80,15 +80,15 @@ def main(args):
     # ===========================
     # generator
     gen = Generator().to(device)
-    # pretrained_model = r'model\gen_{}.pt'.format(pretrained_epochs)
-    # gen.load_state_dict(torch.load(pretrained_model))
-    # optimizer_g = optim.Adam(gen.parameters(), lr=lr, betas=(0.5, 0.999))
+    pretrained_model = r'model\gen_{}.pt'.format(pretrained_epochs)
+    gen.load_state_dict(torch.load(pretrained_model))
+    optimizer_g = optim.Adam(gen.parameters(), lr=lr, betas=(0.5, 0.999))
 
     # discriminator
     disc = Discriminator().to(device)
-    # pretrained_model = r'model\disc_{}.pt'.format(pretrained_epochs)
-    # disc.load_state_dict(torch.load(pretrained_model))
-    # optimizer_d = optim.Adam(disc.parameters(), lr=lr, betas=(0.5, 0.999))
+    pretrained_model = r'model\disc_{}.pt'.format(pretrained_epochs)
+    disc.load_state_dict(torch.load(pretrained_model))
+    optimizer_d = optim.Adam(disc.parameters(), lr=lr, betas=(0.5, 0.999))
 
     # target model
     if args.target_model == 'FaceNet':
@@ -100,80 +100,83 @@ def main(args):
     elif args.target_model == 'ArcFace':
         target_model = ArcFace(device, classnum, r'model\finetuned_arcface.pt')
         img_size = (112, 112)
+    elif args.target_model == 'VggFace':
+        target_model = VggFace(device, classnum, r'model\finetuned_vggface.pt')
+        img_size = (224, 224)
     else:
         raise Exception(
             'The target model [{}] is not defined!'.format(args.target_model))
 
-    # # Loss function
-    # adversarial_loss = torch.nn.BCELoss()
+    # Loss function
+    adversarial_loss = torch.nn.BCELoss()
 
-    # dataset = PhysicalDataset([eyeglasses, attacker], [eyeglasses_trans, attacker_trans])
-    # loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    dataset = PhysicalDataset([eyeglasses, attacker], [eyeglasses_trans, attacker_trans])
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-    # for epoch in range(epochs):
+    for epoch in range(epochs):
 
-    #     for idx, batch in enumerate(loader):
-    #         eyeglasses_img, attacker_img, matrix = batch[0].to(device), batch[1].to(device), batch[2].to(device)
-    #         batch_size = eyeglasses_img.shape[0]
+        for idx, batch in enumerate(loader):
+            eyeglasses_img, attacker_img, matrix = batch[0].to(device), batch[1].to(device), batch[2].to(device)
+            batch_size = eyeglasses_img.shape[0]
 
-    #         # adversarial ground truths
-    #         valid = torch.ones((batch_size, 1), dtype=torch.float32).to(device) * 0.9
-    #         fake = torch.zeros((batch_size, 1), dtype=torch.float32).to(device)
+            # adversarial ground truths
+            valid = torch.ones((batch_size, 1), dtype=torch.float32).to(device) * 0.9
+            fake = torch.zeros((batch_size, 1), dtype=torch.float32).to(device)
 
-    #         # ==========================
-    #         # train generator          #
-    #         # ==========================
-    #         for p in disc.parameters():
-    #             p.requires_grad = False
-    #         optimizer_g.zero_grad()
-    #         noise = torch.FloatTensor(
-    #             batch_size, 25).uniform_(-1.0, 1.0).to(device)
-    #         z = autograd.Variable(noise.data, requires_grad=True)
+            # ==========================
+            # train generator          #
+            # ==========================
+            for p in disc.parameters():
+                p.requires_grad = False
+            optimizer_g.zero_grad()
+            noise = torch.FloatTensor(
+                batch_size, 25).uniform_(-1.0, 1.0).to(device)
+            z = autograd.Variable(noise.data, requires_grad=True)
 
-    #         # discriminative loss
-    #         fake_images = gen(z)
-    #         g_loss = adversarial_loss(disc(fake_images), valid)
-    #         grads_disc_loss = autograd.grad(g_loss, gen.parameters(), retain_graph=True)
-    #         # attack loss
-    #         worn_imgs = wear_eyeglasses_physical(fake_images, attacker_img, mask_img, matrix)
-    #         clf_loss, prob, _ = calc_loss(
-    #             target_model, worn_imgs, target, img_size, mode)
-    #         grads_clf_loss = autograd.grad(-1.0 * clf_loss, gen.parameters(), retain_graph=False)
-    #         # update generator parameters gradients
-    #         for i, p in enumerate(gen.parameters()):
-    #             grad_1 = grads_disc_loss[i]
-    #             grad_2 = grads_clf_loss[i]
-    #             if torch.norm(grad_1, p=2) > torch.norm(grad_2, p=2):
-    #                 grad_1 = grad_1 * torch.norm(grad_2, p=2) / torch.norm(grad_1, p=2)
-    #             else:
-    #                 grad_2 = grad_2 * torch.norm(grad_1, p=2) / torch.norm(grad_2, p=2)
-    #             p.grad = (kappa * grad_1 + (1.0 - kappa) * grad_2).clone()
-    #         optimizer_g.step()
+            # discriminative loss
+            fake_images = gen(z)
+            g_loss = adversarial_loss(disc(fake_images), valid)
+            grads_disc_loss = autograd.grad(g_loss, gen.parameters(), retain_graph=True)
+            # attack loss
+            worn_imgs = wear_eyeglasses_physical(fake_images, attacker_img, mask_img, matrix)
+            clf_loss, prob, _ = calc_loss(
+                target_model, worn_imgs, target, img_size, mode)
+            grads_clf_loss = autograd.grad(-1.0 * clf_loss, gen.parameters(), retain_graph=False)
+            # update generator parameters gradients
+            for i, p in enumerate(gen.parameters()):
+                grad_1 = grads_disc_loss[i]
+                grad_2 = grads_clf_loss[i]
+                if torch.norm(grad_1, p=2) > torch.norm(grad_2, p=2):
+                    grad_1 = grad_1 * torch.norm(grad_2, p=2) / torch.norm(grad_1, p=2)
+                else:
+                    grad_2 = grad_2 * torch.norm(grad_1, p=2) / torch.norm(grad_2, p=2)
+                p.grad = (kappa * grad_1 + (1.0 - kappa) * grad_2).clone()
+            optimizer_g.step()
 
-    #         # ==========================
-    #         # train discriminator      #
-    #         # ==========================
-    #         for p in disc.parameters():
-    #             p.requires_grad = True
-    #         optimizer_d.zero_grad()
-    #         fake_images = autograd.Variable(
-    #             fake_images.data, requires_grad=True)
-    #         real_loss = adversarial_loss(disc(eyeglasses_img), valid)
-    #         fake_loss = adversarial_loss(disc(fake_images), fake)
-    #         d_loss = (fake_loss + real_loss) / 2.0
-    #         d_loss.backward()
-    #         optimizer_d.step()
-    #         if idx % 50 == 0:
-    #             print("[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [Prob: %f] [Disc: %f]"
-    #                   % (epoch, epochs, idx, len(loader), d_loss.item(), prob.item(), g_loss.item()))
+            # ==========================
+            # train discriminator      #
+            # ==========================
+            for p in disc.parameters():
+                p.requires_grad = True
+            optimizer_d.zero_grad()
+            fake_images = autograd.Variable(
+                fake_images.data, requires_grad=True)
+            real_loss = adversarial_loss(disc(eyeglasses_img), valid)
+            fake_loss = adversarial_loss(disc(fake_images), fake)
+            d_loss = (fake_loss + real_loss) / 2.0
+            d_loss.backward()
+            optimizer_d.step()
+            if idx % 50 == 0:
+                print("[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [Prob: %f] [Disc: %f]"
+                      % (epoch, epochs, idx, len(loader), d_loss.item(), prob.item(), g_loss.item()))
 
-    #         batches_done = epoch * len(loader) + idx
-    #         if batches_done % sample_interval == 0:
-    #             save_image(worn_imgs.data[:25], "%s/%d.png" %
-    #                        (log_dir, batches_done), nrow=5, normalize=False)
+            batches_done = epoch * len(loader) + idx
+            if batches_done % sample_interval == 0:
+                save_image(worn_imgs.data[:25], "%s/%d.png" %
+                           (log_dir, batches_done), nrow=5, normalize=False)
 
-    # torch.save(gen.state_dict(), r'{}\gen_{}.pt'.format(save_dir, epochs))
-    # torch.save(disc.state_dict(), r'{}\disc_{}.pt'.format(save_dir, epochs))
+    torch.save(gen.state_dict(), r'{}\gen_{}.pt'.format(save_dir, epochs))
+    torch.save(disc.state_dict(), r'{}\disc_{}.pt'.format(save_dir, epochs))
 
     gen.load_state_dict(torch.load(r'{}\gen_{}.pt'.format(save_dir, epochs)))
     disc.load_state_dict(torch.load(r'{}\disc_{}.pt'.format(save_dir, epochs)))
@@ -197,6 +200,7 @@ def main(args):
         for idx in range(32):
             for batch in loader:
                 attacker_img, matrix = batch[0].to(device), batch[1].to(device)
+                attacker_img, matrix = attacker_img[:20], matrix[:20]
                 noise = torch.FloatTensor(1, 25).uniform_(-1.0, 1.0).to(device)
                 noise = noise.repeat(matrix.shape[0], 1)
                 z = autograd.Variable(noise.data, requires_grad=True)
@@ -306,7 +310,7 @@ if __name__ == "__main__":
                 args.mode = 'dodge'
             else:
                 args.mode = 'impersonate'
-            for target_model in ['ArcFace', 'CosFace', 'FaceNet']:
+            for target_model in ['VggFace']:
                 args.target_model = target_model
                 args.batch_size = 32
 
